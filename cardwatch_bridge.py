@@ -16,6 +16,13 @@ Requires the following environment variables:
                         requires 2-Step Verification enabled on the account,
                         generated at https://myaccount.google.com/apppasswords)
   DISCORD_WEBHOOK_URL - the Discord webhook URL to post alerts to
+
+Optional:
+  TEST_MODE           - set to "true" to check ALL unread emails instead of
+                        just ones from CardWatch. Useful for confirming the
+                        whole pipeline (Gmail login -> Discord post) works,
+                        using any test email you send yourself, without
+                        needing a real CardWatch alert to arrive first.
 """
 
 import email
@@ -37,6 +44,7 @@ SENDER_FILTER = "cardwatch.com.au"
 GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
+TEST_MODE = os.environ.get("TEST_MODE", "false").lower() == "true"
 
 
 def decode_mime_words(s):
@@ -129,8 +137,12 @@ def main():
 
     mail.select("inbox")
 
-    # Search for unread emails from CardWatch specifically
-    search_criteria = f'(UNSEEN FROM "{SENDER_FILTER}")'
+    if TEST_MODE:
+        print("TEST_MODE is on - checking ALL unread emails, not just CardWatch ones.")
+        search_criteria = "(UNSEEN)"
+    else:
+        search_criteria = f'(UNSEEN FROM "{SENDER_FILTER}")'
+
     status, message_ids = mail.search(None, search_criteria)
 
     if status != "OK":
